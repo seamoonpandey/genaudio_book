@@ -13,4 +13,14 @@ Autonomous build checklist. Spec: docs/specs/2026-07-05-genaudi-design.md
 
 All done — product works: upload book, see chapters, convert, listen at localhost:8765.
 
+## SaaS validation phase (2026-07-05)
+
+Plan: docs/plans/2026-07-05-genaudi-saas-validation.md — all tasks done.
+
+- Frontend: https://genaudi.pages.dev (Cloudflare Pages, project `genaudi`)
+- API: https://genaudi-api.fly.dev (Fly app `genaudi-api`, region sin, volume `data`)
+- CORS locked to frontend origin; rate limit 10 extracts/day/IP
+- Events + waitlist in SQLite: `flyctl ssh console -a genaudi-api -C "sqlite3 /data/genaudi.db 'select name,count(*) from events group by name'"`
+- Remaining manual check: convert+play a chapter in a real browser at the prod URL (kokoro-js verified in node, not yet in browser)
+
 Done when: upload Great Gatsby PDF in browser, see chapters, click convert, listen.
