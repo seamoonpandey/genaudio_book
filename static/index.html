@@ -1,0 +1,79 @@
+<title>genaudi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: .4rem .5rem; text-align: left; border-bottom: 1px solid #8884; }
+  td:first-child { max-width: 24rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button { cursor: pointer; }
+  .status-done { color: #2a2 } .status-failed { color: #d33 }
+  .status-running, .status-queued { color: #e90 }
+  #drop { border: 2px dashed #8888; border-radius: 8px; padding: 2rem; text-align: center; }
+  #msg { color: #d33; min-height: 1.2em; }
+  audio { width: 100%; margin-top: 1rem; }
+</style>
+
+<h1>genaudi — book → audiobook</h1>
+<div id="drop">
+  <input type="file" id="file" accept=".pdf,.epub">
+  <p>PDF or EPUB → chapters → MP3 (Kokoro, local)</p>
+</div>
+<p id="msg"></p>
+<div id="books"></div>
+<audio id="player" controls hidden></audio>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+$('#file').onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  $('#msg').textContent = 'extracting…';
+  const fd = new FormData();
+  fd.append('file', f);
+  const r = await fetch('/api/books', { method: 'POST', body: fd });
+  $('#msg').textContent = r.ok ? '' : (await r.json()).detail;
+  refresh();
+};
+
+async function synth(id, ch) {
+  await fetch(`/api/books/${id}/synth` + (ch ? `?chapter=${ch}` : ''), { method: 'POST' });
+  refresh();
+}
+
+function play(src) {
+  const p = $('#player');
+  p.hidden = false; p.src = src; p.play();
+}
+
+function chapterRow(b, c, i) {
+  const n = i + 1;
+  const st = c.status === 'running' ? `running ${Math.round(c.progress * 100)}%` : c.status;
+  const act = c.status === 'done'
+    ? `<button onclick="play('/audio/${b.id}/audio/${String(n).padStart(2,'0')}.mp3')">▶</button>
+       <a href="/audio/${b.id}/audio/${String(n).padStart(2,'0')}.mp3" download>↓</a>`
+    : c.status === 'pending' || c.status === 'failed'
+      ? `<button onclick="synth('${b.id}',${n})">${c.status === 'failed' ? 'retry' : 'convert'}</button>`
+      : '';
+  const mins = c.duration ? ` · ${Math.round(c.duration / 60)}m` : '';
+  return `<tr><td title="${esc(c.title)}">${n}. ${esc(c.title)}</td>
+    <td>${Math.round(c.chars / 1000)}k chars${mins}</td>
+    <td class="status-${c.status}">${st}</td><td>${act}</td></tr>`;
+}
+
+function render(books) {
+  $('#books').innerHTML = books.map(b => `
+    <h2>${esc(b.title)}
+      <button onclick="synth('${b.id}')">Convert all</button></h2>
+    <table>${b.chapters.map((c, i) => chapterRow(b, c, i)).join('')}</table>`).join('');
+}
+
+async function refresh() {
+  render(await (await fetch('/api/books')).json());
+}
+refresh();
+setInterval(refresh, 2000);
+</script>

@@ -1,0 +1,4 @@
+.venv/
+books/
+models/
+__pycache__/
