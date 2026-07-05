@@ -63,6 +63,14 @@ def _worker():
             _set_status(book_id, idx, status="failed")
 
 
+# stale "running"/"queued" from a dead process -> pending, so retry works after restart
+for _p in BOOKS.glob("*/meta.json"):
+    _m = json.loads(_p.read_text())
+    for _c in _m["chapters"]:
+        if _c["status"] in ("running", "queued"):
+            _c["status"] = "pending"
+    _p.write_text(json.dumps(_m, indent=1))
+
 threading.Thread(target=_worker, daemon=True).start()
 
 
