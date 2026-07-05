@@ -3,3 +3,5 @@ books/
 models/
 __pycache__/
 genaudi.db
+node_modules/
+dist/
