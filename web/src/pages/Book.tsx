@@ -10,11 +10,20 @@ import styles from "./Book.module.css";
 
 const mins = (s: number | null) => (s ? `${Math.max(1, Math.round(s / 60))} min` : "");
 const estMins = (chars: number) => `~${Math.max(1, Math.round(chars / 900))} min`;
+// synthesis runs ~4x realtime on the worker; ~900 chars/min of audio → chars/3600 per min of work
+const convMins = (chars: number) => Math.max(1, Math.round(chars / 3600));
 
 function StatusChip({ c }: { c: ChapterMeta }) {
-  if (c.status === "running")
-    return <span className="chip chip-running">Converting {Math.round(c.progress * 100)}%</span>;
-  if (c.status === "queued") return <span className="chip chip-running">Waiting</span>;
+  if (c.status === "running") {
+    const left = Math.max(1, Math.round(convMins(c.chars) * (1 - c.progress)));
+    return (
+      <span className="chip chip-running">
+        Converting {Math.round(c.progress * 100)}% · ~{left} min left
+      </span>
+    );
+  }
+  if (c.status === "queued")
+    return <span className="chip chip-running">Waiting · ~{convMins(c.chars)} min</span>;
   if (c.status === "done") return <span className="chip chip-done">Ready</span>;
   if (c.status === "failed")
     return <span className="chip chip-failed" title={c.error ?? undefined}>Failed</span>;
@@ -45,7 +54,9 @@ export function Book() {
   if (!book) return null;
   const done = book.chapters.filter((c) => c.status === "done");
   const totalDur = done.reduce((a, c) => a + (c.duration ?? 0), 0);
-  const convertible = book.chapters.filter((c) => c.status === "none" || c.status === "failed").length;
+  const convertibleChs = book.chapters.filter((c) => c.status === "none" || c.status === "failed");
+  const convertible = convertibleChs.length;
+  const convertAllMins = convMins(convertibleChs.reduce((a, c) => a + c.chars, 0));
   const freeLeft = me?.plan === "free" ? Math.max(FREE_LIMIT - me.chapters_converted, 0) : null;
 
   const tracks = done.map((c) => ({
@@ -83,6 +94,7 @@ export function Book() {
             >
               Convert all ({convertible})
             </button>
+            {convertible > 0 && <span className="muted num">~{convertAllMins} min</span>}
             {freeLeft !== null && (
               <span className="muted num">{freeLeft} of {FREE_LIMIT} free conversions left</span>
             )}
@@ -119,9 +131,10 @@ export function Book() {
                 <button
                   className="btn btn-sm"
                   disabled={one.isPending}
+                  title={`about ${convMins(c.chars)} min to convert`}
                   onClick={() => { setErr(null); one.mutate(c.id); }}
                 >
-                  {c.status === "failed" ? "Retry" : "Convert"}
+                  {c.status === "failed" ? "Retry" : `Convert · ~${convMins(c.chars)}m`}
                 </button>
               )}
               {c.status === "done" && (
