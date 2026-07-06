@@ -1,0 +1,43 @@
+.page { width: min(46rem, 100% - 2.5rem); margin-inline: auto; }
+
+.toolbar {
+  position: sticky;
+  top: 3.4rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(6px);
+}
+.pos { font-size: 0.85rem; }
+.tools { display: flex; gap: 0.2rem; }
+
+.article {
+  font-family: var(--font-display);
+  font-size: var(--reader-size, 1.08rem);
+  line-height: 1.72;
+  padding: 1.8rem 0 3rem;
+}
+.article h1 {
+  font-size: 1.9em;
+  margin-bottom: 1.2em;
+  text-wrap: balance;
+}
+.article p { margin-bottom: 1em; }
+.article p.first::first-letter {
+  font-size: 3.1em;
+  line-height: 0.85;
+  float: left;
+  padding: 0.06em 0.12em 0 0;
+  color: var(--accent);
+  font-weight: 620;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 2rem;
+}

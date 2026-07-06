@@ -3,47 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>genaudi — turn any ebook into an audiobook, free, in your browser</title>
-  <style>
-    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-    body { max-width: 760px; margin: 0 auto; padding: 0 1rem 4rem; }
-    header { text-align: center; padding: 3rem 0 2rem; }
-    h1 { font-size: 2rem; margin: 0 0 .5rem; }
-    .sub { opacity: .8; margin-bottom: 1.5rem; }
-    #waitlist-form { display: flex; gap: .5rem; justify-content: center; }
-    #waitlist-email { padding: .5rem; min-width: 16rem; }
-    #drop { border: 2px dashed #8888; border-radius: 8px; padding: 2rem; text-align: center; margin-top: 2rem; }
-    table { width: 100%; border-collapse: collapse; }
-    td, th { padding: .4rem .5rem; text-align: left; border-bottom: 1px solid #8884; }
-    td:first-child { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    button { cursor: pointer; }
-    .status-done { color: #2a2 } .status-failed { color: #d33 }
-    .status-running, .status-loading { color: #e90 }
-    #msg { color: #d33; min-height: 1.2em; }
-    #device-note { font-size: .85rem; opacity: .7; }
-    audio { width: 100%; margin-top: 1rem; }
-    h2 { font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
-  </style>
+  <meta name="description" content="Turn any PDF or EPUB you own into an audiobook. Read along, listen anywhere.">
+  <title>genaudi — your books, read aloud</title>
 </head>
 <body>
-  <header>
-    <h1>genaudi</h1>
-    <p class="sub">Turn any PDF or EPUB into an audiobook — free, private, right in your browser. Your book never leaves your device except to split chapters; the voice is generated locally.</p>
-    <form id="waitlist-form">
-      <input type="email" id="waitlist-email" placeholder="email — get launch updates" required>
-      <button>Join waitlist</button>
-    </form>
-  </header>
-
-  <div id="drop">
-    <input type="file" id="file" accept=".pdf,.epub">
-    <p>PDF or EPUB → chapters → listen</p>
-    <p id="device-note"></p>
-  </div>
-  <p id="msg"></p>
-  <div id="books"></div>
-  <audio id="player" controls hidden></audio>
-
-  <script type="module" src="/src/app.ts"></script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

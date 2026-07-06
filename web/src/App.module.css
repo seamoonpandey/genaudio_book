@@ -1,0 +1,22 @@
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.navInner { display: flex; align-items: center; justify-content: space-between; height: 3.4rem; }
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 640;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.wordmark:hover { text-decoration: none; color: var(--accent); }
+.links { display: flex; align-items: center; gap: 1.1rem; }
+.links a { color: var(--muted); font-weight: 500; }
+.links a:hover { color: var(--ink); text-decoration: none; }
+.links a.active { color: var(--ink); }
+.main { flex: 1; padding: 2rem 0 4rem; }

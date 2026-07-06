@@ -1,0 +1,51 @@
+/* genaudi design tokens — warm literary. Light = paper, dark = closed library. */
+:root {
+  --paper: #faf7f2;
+  --card: #ffffff;
+  --card-2: #f3eee5;
+  --ink: #211a14;
+  --muted: #7a6f60;
+  --border: #e8e1d5;
+  --accent: #8c3226;      /* oxblood — bookbinding leather */
+  --accent-hover: #6f2419;
+  --accent-ink: #ffffff;  /* text on accent */
+  --amber: #a16c1f;       /* converting */
+  --olive: #55682f;       /* ready */
+  --red: #a63325;         /* failed */
+  --shadow: 0 1px 2px rgb(33 26 20 / 0.06), 0 4px 14px rgb(33 26 20 / 0.05);
+
+  --font-display: "Fraunces Variable", Georgia, serif;
+  --font-ui: "Inter Variable", system-ui, sans-serif;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --ease: 180ms cubic-bezier(0.25, 0.6, 0.35, 1);
+
+  /* book-cloth palette for generated covers */
+  --cloth-0: #8c3226;
+  --cloth-1: #2f5d62;
+  --cloth-2: #9a7b1e;
+  --cloth-3: #32476e;
+  --cloth-4: #4c5f38;
+  --cloth-5: #6e3b57;
+}
+
+[data-theme="dark"] {
+  --paper: #181310;
+  --card: #221b15;
+  --card-2: #2a2119;
+  --ink: #ede5d8;
+  --muted: #a3968a;
+  --border: #382e24;
+  --accent: #c05b4a;
+  --accent-hover: #d3735f;
+  --accent-ink: #1c0f0a;
+  --amber: #d3a44a;
+  --olive: #a9bc72;
+  --red: #e07a63;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

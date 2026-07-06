@@ -1,0 +1,52 @@
+.head {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2.2rem;
+  align-items: flex-end;
+}
+.meta { display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
+.crumb { font-size: 0.85rem; }
+.meta h1 { font-size: 2rem; text-wrap: balance; }
+.headActions { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-top: 0.4rem; }
+.error { color: var(--red); }
+
+.list { list-style: none; padding: 0; border-top: 1px solid var(--border); }
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.65rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.row:hover { background: color-mix(in srgb, var(--card) 60%, transparent); }
+.n { width: 1.6rem; text-align: right; font-size: 0.85rem; flex-shrink: 0; }
+.rowTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+.rowTitle span:first-child {
+  font-family: var(--font-display);
+  font-weight: 540;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rowTitle span:last-child { font-size: 0.8rem; flex-shrink: 0; }
+
+.rowProgress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: transparent;
+}
+.rowProgress span { display: block; height: 100%; background: var(--amber); transition: width 400ms linear; }
+
+.actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .head { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .rowTitle { flex-direction: column; gap: 0; }
+  .actions { flex-wrap: wrap; }
+}

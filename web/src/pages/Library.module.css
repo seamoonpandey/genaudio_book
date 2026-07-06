@@ -1,0 +1,48 @@
+.head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.2rem; }
+.head h1 { font-size: 1.9rem; }
+
+.grid {
+  margin-top: 1.6rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.6rem 1.3rem;
+}
+
+.card { display: flex; flex-direction: column; }
+.coverLink { transition: transform var(--ease); }
+.coverLink:hover { transform: translateY(-3px); }
+.cardBody { display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.6rem; }
+.title {
+  font-family: var(--font-display);
+  font-weight: 560;
+  color: var(--ink);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cardBody span { font-size: 0.8rem; }
+
+.progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+.progress span { display: block; height: 100%; background: var(--accent); transition: width var(--ease); }
+
+.del { align-self: flex-start; margin-top: 0.2rem; }
+
+.extracting { opacity: 0.85; }
+.coverGhost {
+  aspect-ratio: 2 / 3;
+  border-radius: 3px 8px 8px 3px;
+  background: linear-gradient(100deg, var(--card-2) 40%, var(--border) 50%, var(--card-2) 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.error { color: var(--red); margin-top: 0.6rem; }

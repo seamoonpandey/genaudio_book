@@ -1,0 +1,18 @@
+.zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 1.6rem 1.2rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color var(--ease), background var(--ease);
+}
+.zone:hover, .over { border-color: var(--accent); }
+.over { background: var(--card-2); }
+.big { padding: 3.2rem 1.5rem; }
+.glyph { font-size: 1.6rem; color: var(--accent); }
+.label { font-family: var(--font-display); font-size: 1.05rem; font-weight: 560; }

@@ -1,0 +1,70 @@
+.page { width: min(1060px, 100% - 2.5rem); margin-inline: auto; }
+
+.nav { display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 0; }
+.wordmark { font-family: var(--font-display); font-weight: 640; font-size: 1.35rem; }
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 3rem;
+  align-items: center;
+  padding: 3.5rem 0 4rem;
+}
+.heroText { display: flex; flex-direction: column; gap: 1.1rem; }
+.heroText h1 {
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 620;
+  letter-spacing: -0.015em;
+  font-variation-settings: "SOFT" 60;
+}
+.sub { font-size: 1.1rem; color: var(--muted); max-width: 34rem; }
+.sampleLabel { font-size: 0.9rem; color: var(--muted); margin-top: 0.4rem; }
+.sample { width: 100%; }
+
+.shelf {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-end;
+  justify-content: center;
+}
+.shelf > * { transform: rotate(1.2deg); }
+.shelf > *:first-child { transform: rotate(-2deg) translateY(8px); }
+.shelf > *:last-child { transform: rotate(2.4deg) translateY(4px); }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.4rem;
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--border);
+}
+.step h3 { font-size: 1.15rem; margin-bottom: 0.3rem; }
+
+.pricing { padding: 2.5rem 0 3.5rem; border-top: 1px solid var(--border); }
+.pricing h2 { font-size: 1.7rem; margin-bottom: 1.4rem; }
+.plans { display: grid; grid-template-columns: repeat(2, minmax(0, 320px)); gap: 1.4rem; }
+.plan {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  box-shadow: var(--shadow);
+}
+.plan.pro { border-color: var(--accent); }
+.plan h3 { font-size: 1.2rem; }
+.price { font-family: var(--font-display); font-size: 2.1rem; font-weight: 620; }
+.price span { font-size: 1rem; font-family: var(--font-ui); }
+.plan ul { padding-left: 1.1rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.3rem; }
+.plan a { justify-content: center; }
+
+.footer { padding: 1.5rem 0 2.5rem; border-top: 1px solid var(--border); }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; padding-top: 1.5rem; }
+  .shelf { display: none; }
+  .steps { grid-template-columns: 1fr; }
+  .plans { grid-template-columns: 1fr; }
+}

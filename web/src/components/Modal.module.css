@@ -1,0 +1,12 @@
+.modal {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  padding: 0;
+  width: min(420px, calc(100% - 2rem));
+  box-shadow: var(--shadow);
+}
+.modal::backdrop { background: rgb(20 14 8 / 0.45); }
+.inner { padding: 1.6rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.inner h2 { font-size: 1.25rem; }

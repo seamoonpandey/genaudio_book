@@ -1,0 +1,22 @@
+.page { display: flex; flex-direction: column; gap: 1.4rem; max-width: 34rem; }
+.page h1 { font-size: 1.9rem; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.rowBetween { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.email { font-weight: 600; }
+
+.meter { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--accent); }
+
+.card .btn-primary { align-self: flex-start; }
+.warn { color: var(--amber); }
+.error { color: var(--red); }

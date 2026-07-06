@@ -1,0 +1,28 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+.card {
+  width: min(380px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  text-align: center;
+}
+.brand { font-size: 2rem; }
+.card button { justify-content: center; }
+.or {
+  display: flex; align-items: center; gap: 0.8rem;
+  color: var(--muted); font-size: 0.8rem;
+}
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.form { display: flex; flex-direction: column; gap: 0.6rem; }
+.error { color: var(--red); font-size: 0.9rem; }
+.ok { color: var(--olive); font-size: 0.9rem; }
