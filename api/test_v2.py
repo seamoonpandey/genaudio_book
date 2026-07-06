@@ -19,7 +19,7 @@ LOREM = (
     "or no money in my purse, and nothing particular to interest me on shore, I "
     "thought I would sail about a little and see the watery part of the world. It "
     "is a way I have of driving off the spleen and regulating the circulation. "
-) * 3
+) * 6  # ~2000 chars: safely above extract.MIN_MAIN_CHARS so no chapter reads as front matter
 
 
 def make_pdf(n_chapters=3) -> bytes:

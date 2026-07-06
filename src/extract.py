@@ -12,6 +12,26 @@ HEADING_RE = re.compile(
 )
 PAGES_PER_FALLBACK_CHUNK = 15
 MIN_CHAPTER_CHARS = 200  # drop cover/blank fragments
+MIN_MAIN_CHARS = 1500    # leading chapters shorter than this = front matter (title page, epigraph)
+
+# front/back matter nobody wants read aloud
+JUNK_TITLE_RE = re.compile(
+    r"^(table of )?contents$|acknowledg|copyright|dedication|^index$|bibliograph"
+    r"|glossary|about the author|also by |title page|^cover$|colophon"
+    r"|list of (figures|tables|illustrations)|^notes$|praise for ",
+    re.IGNORECASE,
+)
+
+
+def strip_front_matter(chapters):
+    """Drop junk-titled chapters anywhere, then trim leading short chapters so the
+    book starts at real content. Never trims the whole book away."""
+    kept = [(t, b) for t, b in chapters if not JUNK_TITLE_RE.search(t.strip())]
+    start = 0
+    while start < len(kept) - 1 and len(kept[start][1]) < MIN_MAIN_CHARS:
+        start += 1
+    trimmed = kept[start:]
+    return trimmed if trimmed else chapters
 
 
 def _page_texts(doc):
@@ -104,6 +124,7 @@ def extract_chapters(path):
     chapters = _split_by_toc(doc, pages) or _split_by_headings(pages) or _split_by_pages(pages)
     doc.close()
     chapters = [(t, body) for t, body in chapters if len(body) >= MIN_CHAPTER_CHARS]
+    chapters = strip_front_matter(chapters)
     if not chapters:
         raise ValueError("no extractable text — scanned/image PDF?")
     return title, chapters
