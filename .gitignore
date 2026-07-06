@@ -5,3 +5,4 @@ __pycache__/
 genaudi.db
 node_modules/
 dist/
+.dev-data
