@@ -3,6 +3,8 @@ import os
 import re
 import subprocess
 import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import soundfile as sf
@@ -48,16 +50,29 @@ def chunk_sentences(text, max_chars=MAX_CHUNK):
 
 
 def synth_chapter(text, out_mp3, progress=None):
-    """Synthesize text to out_mp3. progress(done, total) optional callback."""
+    """Synthesize text to out_mp3. progress(done, total) optional callback.
+    Chunks run in parallel threads (onnxruntime releases the GIL; measured
+    ~1.5x over sequential since intra-op threading doesn't saturate on an 82M model)."""
     k = _engine()
     chunks = chunk_sentences(text)
-    waves, sr = [], 24000
-    for i, c in enumerate(chunks):
+    threads = int(os.environ.get("SYNTH_THREADS", "0")) or min(4, os.cpu_count() or 1)
+    done, lock = 0, threading.Lock()
+
+    def gen(c):
+        nonlocal done
         samples, sr = k.create(c, voice=VOICE, speed=1.0, lang="en-us")
+        if progress:
+            with lock:
+                done += 1
+                progress(done, len(chunks))
+        return samples, sr
+
+    with ThreadPoolExecutor(threads) as ex:
+        results = list(ex.map(gen, chunks))  # ordered, so chapter audio stays in sequence
+    waves, sr = [], results[0][1] if results else 24000
+    for samples, _ in results:
         waves.append(samples)
         waves.append(np.zeros(int(sr * 0.3), dtype=samples.dtype))  # beat between chunks
-        if progress:
-            progress(i + 1, len(chunks))
     audio = np.concatenate(waves)
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         wav = tmp.name
