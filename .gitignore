@@ -6,3 +6,4 @@ genaudi.db
 node_modules/
 dist/
 .dev-data
+.env.secret
