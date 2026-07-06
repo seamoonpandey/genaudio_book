@@ -6,6 +6,7 @@ primary_region = "sin"
 
 [env]
   DATA_DIR = "/data"
+  FRONTEND_ORIGIN = "https://genaudi.pages.dev"
 
 [[mounts]]
   source = "data"
@@ -16,7 +17,7 @@ primary_region = "sin"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1  # worker claims jobs over private network; internal traffic can't auto-start
 
 [[vm]]
   size = "shared-cpu-1x"

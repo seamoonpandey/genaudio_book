@@ -1,207 +1,125 @@
 # genaudi
 
-Turn any PDF or EPUB into an audiobook. Upload a book, get chapters, convert each chapter to MP3 with the [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) TTS model, and listen.
+Turn any PDF or EPUB you own into an audiobook. Upload → chapters detected → read in a clean e-reader view, convert chapters to audio server-side, listen in a persistent player or download MP3s.
 
-Two deployables live in this repo:
+**v2 is a full SaaS**: accounts (magic link + Google), free tier (unlimited reading, 3 chapter conversions), Pro $9/mo via Stripe (unlimited conversions), server-side Kokoro TTS on a worker fleet. Spec: `docs/specs/2026-07-06-genaudi-v2-design.md`.
 
-| App | What | Where it runs | TTS runs on |
-|-----|------|---------------|-------------|
-| **Local app** (`src/` + `static/`) | Full pipeline: upload → extract → synthesize → serve MP3s | Your machine (`uvicorn`, port 8765) | Server (kokoro-onnx + ffmpeg) |
-| **SaaS validation** (`web/` + `api/`) | Landing page + in-browser synthesis; server only extracts chapters | [genaudi.pages.dev](https://genaudi.pages.dev) + [genaudi-api.fly.dev](https://genaudi-api.fly.dev) | Browser (kokoro-js in a Web Worker, WebGPU or WASM) |
-
-Both share the same extraction logic (`src/extract.py`) and the same sentence-chunking approach.
-
-## How it works
+## Architecture
 
 ```
-                    ┌─────────────────────────────────────────────┐
- PDF / EPUB ──────▶ │ extract.py (PyMuPDF)                        │
-                    │  1. TOC split (if the file has a real TOC)  │
-                    │  2. heading-regex split ("Chapter 7", "VII")│
-                    │  3. fallback: 15-page chunks                │
-                    │  + strip running headers/footers,           │
-                    │    de-hyphenate, unwrap hard line breaks    │
-                    └──────────────┬──────────────────────────────┘
-                                   │  [(chapter title, clean text)]
-                                   ▼
-                    ┌─────────────────────────────────────────────┐
-                    │ synthesis                                   │
-                    │  split into ≤400-char sentence chunks       │
-                    │  → Kokoro TTS per chunk (voice af_heart,    │
-                    │    24 kHz) + 0.3 s pause between chunks     │
-                    │  → encode to 64 kbps MP3                    │
-                    └──────────────┬──────────────────────────────┘
-                                   │
-              local app: ffmpeg → books/<id>/audio/NN.mp3
-              web app:   lamejs → OPFS blob, played/downloaded in-browser
+CF Pages (React SPA — warm literary UI)
+   │ HTTPS/JSON, httpOnly session cookie
+   ▼
+Fly: genaudi-api ── FastAPI, SQLite (WAL) on /data volume
+   │   auth · books · chapters · job queue · quota · Stripe webhooks
+   ├── Tigris S3: uploaded sources + MP3s (local disk in dev)
+   ▼ private network, bearer token
+Fly: genaudi-worker ── claims jobs → kokoro-onnx → MP3 → posts back
 ```
 
-### Extraction (`src/extract.py`)
-
-`extract_chapters(path)` returns `(book_title, [(chapter_title, text)])`. It tries three strategies in order and takes the first that yields ≥2 chapters:
-
-1. **TOC** — PyMuPDF's `get_toc()`, top-level entries (level ≤2 if too few at level 1).
-2. **Heading regex** — lines matching `Chapter/Part/Book/Section N`, bare numerals, or Roman numerals alone on a line. Front matter before the first heading becomes its own chapter.
-3. **Page chunks** — dumb 15-page slices, so no book ever comes back as one giant blob.
-
-Before splitting, lines that repeat on >30% of pages (running heads, page numbers) are stripped. After splitting, hyphenation across line breaks is repaired and hard-wrapped lines are joined into paragraphs. Chapters under 200 chars (covers, blanks) are dropped. A scanned/image-only PDF raises `ValueError`.
-
-### Synthesis
-
-Text is split at sentence boundaries and packed into ≤400-char chunks (Kokoro degrades on long inputs). Each chunk is synthesized separately with a 0.3 s silence between chunks, then everything is concatenated and MP3-encoded at 64 kbps.
-
-- **Server-side** (`src/synth.py`): `kokoro-onnx` against `models/kokoro-v1.0.onnx` + `models/voices-v1.0.bin`, WAV via soundfile, MP3 via `ffmpeg`. Rough throughput: a full novel (Gatsby, ~4h20m of audio) takes a while — chapters run one at a time on a single background worker thread.
-- **In-browser** (`web/src/synth-worker.ts`): `kokoro-js` loads the q8 ONNX model from HuggingFace (`onnx-community/Kokoro-82M-v1.0-ONNX`) inside a Web Worker, using WebGPU when available and WASM otherwise. MP3 encoding via `@breezystack/lamejs`. First conversion downloads the model (~80 MB); it stays cached after that.
+Key properties:
+- **Worker never touches the DB** — it claims/completes jobs via `/internal/*` endpoints over Fly's private network, so SQLite keeps a single writer.
+- **Quota is transactional** — free tier = 3 chapter conversions lifetime, checked+incremented at enqueue in one transaction; refunded if a job permanently fails. Enforced server-side.
+- **Crash-safe queue** — jobs `running` >15 min are requeued; 3 failed attempts → `failed` with a user-visible reason and a Retry button.
+- **Engine abstraction** — `worker/engines.py` exposes `synthesize(text, voice, progress_cb)`; Kokoro now, premium voices (ElevenLabs/OpenAI) drop in as a higher tier later.
 
 ## Repo layout
 
 ```
-src/            local app: extract.py, synth.py, app.py (FastAPI)
-static/         local app UI (single index.html, polls /api/books)
-tests/          pytest for extraction/segmentation
-models/         kokoro-v1.0.onnx + voices-v1.0.bin (server-side TTS)
-books/          local app data: books/<id>/{source,meta.json,chapters/,audio/}
-
-web/            SaaS frontend (Vite + TypeScript, no framework)
-  src/app.ts        UI, synth queue, waitlist, event tracking
-  src/synth-worker.ts  kokoro-js + MP3 encode in a Web Worker
-  src/chunk.ts      sentence chunker (TS twin of synth.py's)
-  src/db.ts         IndexedDB (book metadata) + OPFS (MP3 blobs)
-api/            SaaS backend (FastAPI): stateless extract + waitlist/events
-  main.py, Dockerfile, fly.toml, test_api.py
-
-docs/specs/     design docs
-docs/plans/     validation-phase plan
-TASKS.md        build checklist / status
+api/        FastAPI: main (books/chapters/convert), auth, jobs, billing, db, storage
+worker/     TTS worker: claim loop + engines, own Dockerfile/fly.toml
+web/        React + Vite SPA (CF Pages) — library, book view, reader, player, account
+src/        extract.py (chapterization, shared), synth.py (kokoro+ffmpeg, used by worker)
+tests/      extraction tests · api/test_v2.py — API/quota/queue/webhook tests
+models/     kokoro-v1.0.onnx + voices-v1.0.bin (local dev; baked into worker image)
+docs/       specs + plans
+static/, src/app.py   v1 single-machine local app (still works standalone)
 ```
 
-## Setup
+## Run locally
 
-### Prerequisites
-
-- Python 3.12+ (local app also needs `ffmpeg` on PATH)
-- Node 20+ (web frontend only)
-
-### Local app (full server-side pipeline)
-
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt   # fastapi uvicorn python-multipart pymupdf kokoro-onnx soundfile
-```
-
-Download the TTS model into `models/` (not committed — ~310 MB + ~27 MB):
+Prereqs: Python 3.12+, Node 20+, `ffmpeg`. Models in `models/` (worker only):
 
 ```bash
 mkdir -p models
 curl -L -o models/kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
 curl -L -o models/voices-v1.0.bin  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+python -m venv .venv && source .venv/bin/activate
+pip install -r api/requirements.txt kokoro-onnx soundfile numpy
 ```
 
-Run:
+Three terminals:
 
 ```bash
-cd src && uvicorn app:app --port 8765
+# 1 — API (dev mode: magic-link login without email, files on local disk)
+cd api && DEV_LOGIN=1 WORKER_TOKEN=dev ../.venv/bin/uvicorn main:app --port 8000
+
+# 2 — worker
+cd worker && API_URL=http://127.0.0.1:8000 WORKER_TOKEN=dev ../.venv/bin/python worker.py
+
+# 3 — frontend
+cd web && npm install && npm run dev   # http://localhost:5173
 ```
 
-Open http://localhost:8765 — upload a PDF/EPUB, chapters appear, click convert, listen. Books and MP3s persist under `books/`. If the process dies mid-synthesis, stale `running`/`queued` chapters reset to `pending` on next start, so retry works.
-
-### SaaS API (extract-only backend)
-
-```bash
-pip install -r api/requirements.txt   # no TTS deps — extraction only
-cd api && uvicorn main:app --port 8000
-```
-
-Env vars: `FRONTEND_ORIGIN` (CORS allowlist, defaults `*`), `DATA_DIR` (SQLite location, defaults cwd).
-
-### SaaS frontend
-
-```bash
-cd web
-npm install
-npm run dev        # Vite dev server; expects API at http://localhost:8000
-```
-
-Point at a different API with `VITE_API_BASE=https://genaudi-api.fly.dev npm run dev`.
-
-Books live in IndexedDB, MP3s in OPFS (Origin Private File System) — all client-side, nothing uploaded except the source file for extraction.
+Sign in with any email (dev mode skips the actual email), drop a PDF/EPUB, convert, listen. Billing endpoints return 503 until Stripe env is set; the UI says so.
 
 ## Tests
 
 ```bash
-# extraction + segmentation
-source .venv/bin/activate && pytest tests/ api/
-
-# frontend (sentence chunker)
-cd web && npm test
-
-# TTS smoke test (one sentence → playable MP3)
-cd src && python synth.py
-
-# web build (typecheck + bundle)
-cd web && npm run build
+.venv/bin/pytest api tests      # 18 tests: auth, CSRF, quota, queue, webhooks, extraction
+cd web && npm test              # player state machine
+cd web && npm run build         # typecheck + bundle
 ```
 
-## API reference
+Verified E2E locally: dev login → upload Gatsby EPUB (12 chapters) → convert → real worker synthesizes → valid MP3 (ffprobe) → quota counter increments.
 
-### SaaS API (`api/main.py` — genaudi-api.fly.dev)
+## API surface
 
-| Endpoint | Method | Body | Returns |
-|----------|--------|------|---------|
-| `/api/extract` | POST | multipart `file` (.pdf/.epub, ≤25 MB) | `{title, chapters: [{title, text}]}` |
-| `/api/waitlist` | POST | `{email}` | `{ok: true}` |
-| `/api/event` | POST | `{name}` — one of `extract`, `synth_start`, `synth_done`, `waitlist_signup` | `{ok: true}` |
-| `/api/health` | GET | — | `{ok: true}` |
+```
+POST /auth/magic  /auth/magic/verify  /auth/google   GET /auth/me   POST /auth/logout
+POST /books                GET /books            GET|DELETE /books/{id}
+GET  /books/{id}/chapters/{idx}                  (reader text)
+POST /chapters/{id}/convert   POST /books/{id}/convert-all      (402 = quota)
+GET  /chapters/{id}/audio     GET /chapters/{id}/audio-url
+POST /billing/checkout  /billing/portal  /webhooks/stripe
+POST /internal/jobs/claim|{id}/progress|{id}/complete|{id}/fail  (worker, bearer token)
+```
 
-Rate limit: 10 extracts/day/IP (in-memory counter — resets on machine restart, which is fine for a validation phase). Errors: `400` bad type/email, `413` too big, `422` unextractable (scanned PDF), `429` rate limited.
+Errors are always `{"error":{"code","message"}}`. Mutations require `X-Requested-With: genaudi` (CSRF) except Stripe webhook and internal routes.
 
-### Local app (`src/app.py` — localhost:8765)
+## Deploy
 
-| Endpoint | Method | What |
-|----------|--------|------|
-| `/api/books` | POST | multipart `file` upload → extract → returns book meta |
-| `/api/books` | GET | list all books with per-chapter status |
-| `/api/books/{id}` | GET | one book's meta (UI polls this for progress) |
-| `/api/books/{id}/synth?chapter=N` | POST | queue chapter N (1-based) or all pending/failed chapters |
-| `/audio/{id}/audio/NN.mp3` | GET | static MP3 |
-| `/` | GET | UI |
-
-Chapter status lifecycle: `pending → queued → running (progress 0–1) → done` (or `failed`, retryable).
-
-## Deployment
-
-### API → Fly.io (app `genaudi-api`, region sin)
+Secrets you need once (API app):
 
 ```bash
-flyctl deploy -c api/fly.toml       # from repo root — Dockerfile copies src/extract.py + api/main.py
+flyctl secrets set -a genaudi-api \
+  WORKER_TOKEN=$(openssl rand -hex 24) \
+  GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... \
+  RESEND_API_KEY=... MAIL_FROM="genaudi <login@yourdomain>" \
+  STRIPE_SECRET_KEY=sk_live_... STRIPE_PRICE_ID=price_... STRIPE_WEBHOOK_SECRET=whsec_... \
+  BUCKET_NAME=... AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_ENDPOINT_URL_S3=https://fly.storage.tigris.dev
+# Tigris bucket: flyctl storage create -a genaudi-api  (fills the AWS_* values)
+# worker gets the same WORKER_TOKEN:
+flyctl secrets set -a genaudi-worker WORKER_TOKEN=<same value>
 ```
 
-Machine: shared-cpu-1x, 512 MB, scales to zero. 1 GB volume `data` mounted at `/data` holds `genaudi.db` (waitlist + events).
-
-Check demand signal:
+Deploys (from repo root):
 
 ```bash
-flyctl ssh console -a genaudi-api -C "sqlite3 /data/genaudi.db 'select name,count(*) from events group by name'"
+flyctl deploy -c api/fly.toml                 # API (existing app genaudi-api)
+flyctl apps create genaudi-worker && flyctl deploy -c worker/fly.toml   # worker (once), then deploy
+cd web && VITE_API_BASE=https://genaudi-api.fly.dev VITE_GOOGLE_CLIENT_ID=... npm run build \
+  && npx wrangler pages deploy dist --project-name genaudi --branch main
 ```
 
-### Frontend → Cloudflare Pages (project `genaudi`)
+Stripe wiring: create one $9/mo price, point a webhook at `https://genaudi-api.fly.dev/webhooks/stripe` with events `checkout.session.completed`, `customer.subscription.deleted`, `invoice.payment_failed`. Google OAuth: authorized redirect URI `https://genaudi.pages.dev/login`.
 
-```bash
-cd web
-VITE_API_BASE=https://genaudi-api.fly.dev npm run build
-npx wrangler pages deploy dist --project-name genaudi --branch main
-```
+Note: API runs `min_machines_running = 1` — the worker claims jobs over the private network, and internal traffic can't auto-start a stopped machine.
 
-## Design docs
+## Design system (web)
 
-- `docs/specs/2026-07-05-genaudi-design.md` — v1 (local pipeline) design
-- `docs/specs/2026-07-05-genaudi-saas-design.md` — SaaS validation design
-- `docs/plans/2026-07-05-genaudi-saas-validation.md` — validation-phase plan
-- `TASKS.md` — build checklist and current status
+Warm literary: paper `#FAF7F2` / dark `#181310`, oxblood accent `#8C3226`, Fraunces (display + reader) with Inter (UI), generated cloth-bound book covers (title-hashed cloth palette) as the visual signature, drop caps in the reader, 150–200ms motion only, both themes ≥4.5:1 contrast, statuses never color-only.
 
-## Known limits
+## Cut from v2 (deliberate)
 
-- English only, single voice (`af_heart`).
-- Scanned/image PDFs are rejected — no OCR.
-- Browser synthesis is single-chapter-at-a-time; a long chapter on a WASM-only device is slow.
-- Rate limiting and events are best-effort (in-memory / SQLite) — deliberate, this is a validation phase.
+Text-follows-audio highlighting, premium voice tier wiring, OCR for scanned PDFs, mobile apps, teams. Each waits on demand.
