@@ -1,0 +1,17 @@
+# deploy from repo root: flyctl deploy -c worker/fly.toml
+app = "genaudi-worker"
+primary_region = "sin"
+
+[build]
+  dockerfile = "worker/Dockerfile"
+
+[env]
+  API_URL = "http://genaudi-api.internal:8080"
+  MODELS_DIR = "/app/models"
+
+# no [http_service]: worker polls, nothing listens.
+# WORKER_TOKEN via: flyctl secrets set -a genaudi-worker WORKER_TOKEN=...
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"

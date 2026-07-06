@@ -7,8 +7,11 @@ import tempfile
 import numpy as np
 import soundfile as sf
 
-MODEL = os.path.join(os.path.dirname(__file__), "..", "models", "kokoro-v1.0.onnx")
-VOICES = os.path.join(os.path.dirname(__file__), "..", "models", "voices-v1.0.bin")
+_MODELS = os.environ.get(
+    "MODELS_DIR", os.path.join(os.path.dirname(__file__), "..", "models")
+)
+MODEL = os.path.join(_MODELS, "kokoro-v1.0.onnx")
+VOICES = os.path.join(_MODELS, "voices-v1.0.bin")
 VOICE = "af_heart"
 MAX_CHUNK = 400  # chars; kokoro degrades on very long inputs
 

@@ -1,0 +1,4 @@
+httpx
+kokoro-onnx
+soundfile
+numpy
