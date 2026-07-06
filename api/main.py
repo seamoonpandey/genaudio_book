@@ -177,15 +177,25 @@ def convert_all(book_id: str, user=Depends(current_user)):
     return {"queued": jobs.enqueue(user, ids)}
 
 
-@app.get("/chapters/{chapter_id}/audio")
-def audio(chapter_id: int, user=Depends(current_user)):
+def _audio_key(chapter_id: int, user) -> str:
     ch = db.q1(
         "SELECT ch.audio_key FROM chapters ch JOIN books b ON b.id=ch.book_id "
         "WHERE ch.id=? AND b.user_id=?", (chapter_id, user["id"]),
     )
     if not ch or not ch["audio_key"]:
         raise HTTPException(404, {"code": "not_found", "message": "no audio for chapter"})
-    return RedirectResponse(storage.url(ch["audio_key"]), status_code=302)
+    return ch["audio_key"]
+
+
+@app.get("/chapters/{chapter_id}/audio")
+def audio(chapter_id: int, user=Depends(current_user)):
+    return RedirectResponse(storage.url(_audio_key(chapter_id, user)), status_code=302)
+
+
+@app.get("/chapters/{chapter_id}/audio-url")
+def audio_url(chapter_id: int, user=Depends(current_user)):
+    """SPA-friendly: audio elements can't follow cross-origin 302s with cookies."""
+    return {"url": storage.url(_audio_key(chapter_id, user))}
 
 
 @app.get("/health")
