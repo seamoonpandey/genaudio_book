@@ -33,8 +33,9 @@ src/        extract.py (chapterization, shared), synth.py (kokoro+ffmpeg, used b
 tests/      extraction tests · api/test_v2.py — API/quota/queue/webhook tests
 models/     kokoro-v1.0.onnx + voices-v1.0.bin (local dev; baked into worker image)
 docs/       specs + plans
-static/, src/app.py   v1 single-machine local app (still works standalone)
 ```
+
+The uvicorn API (`api/`) is backend-only — JSON over HTTPS, no HTML. The only UI is the React SPA in `web/`. (The old v1 single-machine app that served its own HTML from uvicorn was removed.)
 
 ## Run locally
 
