@@ -59,7 +59,7 @@ def upload(client, n=3):
 
 def test_magic_login_and_me(client):
     user = login(client)
-    assert user["plan"] == "free"
+    assert user["plan"] == "pro"  # DEV_LOGIN=1 signups are pro
     r = client.get("/auth/me")
     assert r.json()["user"]["email"] == "a@example.com"
 
@@ -106,6 +106,7 @@ def test_delete_cascades(client):
 
 def test_free_quota_enforced(client):
     login(client, "quota@example.com")
+    db.ex("UPDATE users SET plan='free' WHERE email=?", ("quota@example.com",))
     book = upload(client, n=5)
     chs = book["chapters"][:5]
     for ch in chs[:3]:
@@ -118,6 +119,7 @@ def test_free_quota_enforced(client):
 
 def test_convert_all_quota_atomic(client):
     login(client, "atomic@example.com")
+    db.ex("UPDATE users SET plan='free' WHERE email=?", ("atomic@example.com",))
     book = upload(client, n=5)
     r = client.post(f"/books/{book['id']}/convert-all", headers=H)
     assert r.status_code == 402  # 5 > 3: nothing queued, nothing charged

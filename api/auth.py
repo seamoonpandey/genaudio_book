@@ -34,9 +34,10 @@ def get_or_create_user(email: str, google_id: str | None = None) -> int:
         if google_id and not row["google_id"]:
             db.ex("UPDATE users SET google_id=? WHERE id=?", (google_id, row["id"]))
         return row["id"]
+    plan = "pro" if os.environ.get("DEV_LOGIN") == "1" else "free"
     cur = db.ex(
-        "INSERT INTO users(email, google_id, created_at) VALUES(?,?,?)",
-        (email, google_id, _now()),
+        "INSERT INTO users(email, google_id, created_at, plan) VALUES(?,?,?,?)",
+        (email, google_id, _now(), plan),
     )
     return cur.lastrowid
 
